@@ -163,11 +163,11 @@ with st.sidebar:
 
 # ── Video source ──────────────────────────────────────────────────────────────
 st.subheader("Video Source")
+tiktok_url = st.text_input("TikTok URL", placeholder="https://www.tiktok.com/@...")
+
+st.markdown("<div style='text-align:center;color:gray;margin:4px 0'>— or upload if URL doesn't work —</div>", unsafe_allow_html=True)
+
 uploaded_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi", "mkv"])
-
-st.markdown("<div style='text-align:center;color:gray;margin:4px 0'>— or —</div>", unsafe_allow_html=True)
-
-tiktok_url = st.text_input("TikTok URL (fallback if upload not available)", placeholder="https://www.tiktok.com/@...")
 
 # ── Time range ────────────────────────────────────────────────────────────────
 st.subheader("Time Range")
@@ -181,8 +181,8 @@ if st.button("Generate Caption & Title", type="primary", use_container_width=Tru
     errors = []
     if not gemini_key:
         errors.append("Gemini API key is missing — contact the app owner.")
-    if not uploaded_file and not tiktok_url:
-        errors.append("Upload a video file or provide a TikTok URL.")
+    if not tiktok_url and not uploaded_file:
+        errors.append("Provide a TikTok URL or upload a video file.")
     if not start_time or not end_time:
         errors.append("Enter both start and end times.")
     if not tg_token or not tg_chat_id:
@@ -210,7 +210,16 @@ if st.button("Generate Caption & Title", type="primary", use_container_width=Tru
                     with st.status("Processing...", expanded=True) as status:
 
                         # ── Step 1: Get source video ──────────────────────
-                        if uploaded_file:
+                        if tiktok_url:
+                            log("Step 1/3 — Downloading via yt-dlp...")
+                            source_ok, raw_path, dl_stdout, dl_stderr = download_video(tiktok_url, tmp_dir)
+                            with st.expander("yt-dlp output"):
+                                st.code(dl_stdout or "(no stdout)")
+                                st.code(dl_stderr or "(no stderr)")
+                            if not source_ok:
+                                status.update(label="Failed at download", state="error")
+                                st.error("yt-dlp failed. See output above. Upload the file directly using the uploader below.")
+                        else:
                             log("Step 1/3 — Saving uploaded file...")
                             raw_path = os.path.join(tmp_dir, "source" + os.path.splitext(uploaded_file.name)[1])
                             with open(raw_path, "wb") as f:
@@ -218,15 +227,6 @@ if st.button("Generate Caption & Title", type="primary", use_container_width=Tru
                             raw_size = os.path.getsize(raw_path)
                             log(f"Upload OK — {raw_size / 1024 / 1024:.2f} MB")
                             source_ok = True
-                        else:
-                            log("Step 1/3 — Downloading via yt-dlp (fallback)...")
-                            source_ok, raw_path, dl_stdout, dl_stderr = download_video(tiktok_url, tmp_dir)
-                            with st.expander("yt-dlp output"):
-                                st.code(dl_stdout or "(no stdout)")
-                                st.code(dl_stderr or "(no stderr)")
-                            if not source_ok:
-                                status.update(label="Failed at download", state="error")
-                                st.error("yt-dlp failed. See output above. Try uploading the file directly instead.")
 
                         # ── Step 2: Clip ──────────────────────────────────
                         if source_ok:
@@ -245,17 +245,20 @@ if st.button("Generate Caption & Title", type="primary", use_container_width=Tru
                         if source_ok and clip_ok:
                             log("Step 3/3 — Uploading to Gemini and generating content...")
                             result = generate_content(gemini_key, clip_path, start_time, end_time)
+                            message = result
+                            if tiktok_url:
+                                message = f"{result}\n\n{tiktok_url}"
                             log("Gemini OK. Sending to Telegram...")
-                            send_to_telegram(result, tg_token, tg_chat_id)
+                            send_to_telegram(message, tg_token, tg_chat_id)
                             log("Telegram OK.")
                             status.update(label="Done!", state="complete")
 
                     if source_ok and clip_ok:
                         st.divider()
                         st.subheader("Generated Content")
-                        st.text_area("Copy:", result, height=300)
+                        st.text_area("Copy:", message, height=300)
                         st.divider()
-                        st.markdown(result)
+                        st.markdown(message)
 
                 finally:
                     if os.path.exists(clip_path):
