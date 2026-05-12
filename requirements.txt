@@ -4,3 +4,4 @@ google-api-core
 yt-dlp
 python-dotenv
 requests
+imageio-ffmpeg

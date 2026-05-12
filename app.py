@@ -5,6 +5,7 @@ import tempfile
 import time
 import traceback
 import requests
+import imageio_ffmpeg
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
 from dotenv import load_dotenv
@@ -60,7 +61,7 @@ def download_video(url: str, out_dir: str) -> tuple[bool, str, str, str]:
 def clip_video(input_path: str, start: float, duration: float, output_path: str) -> tuple[bool, str]:
     """Returns (success, stderr)."""
     cmd = [
-        "ffmpeg",
+        imageio_ffmpeg.get_ffmpeg_exe(),
         "-i", input_path,
         "-ss", str(start),
         "-t", str(duration),
