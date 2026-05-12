@@ -31,7 +31,7 @@ def download_video(url: str, out_dir: str) -> tuple[bool, str, str, str]:
     cmd = [
         "yt-dlp",
         "--no-playlist",
-        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
         "--merge-output-format", "mp4",
         "--verbose",
         "-o", output_template,
@@ -152,7 +152,7 @@ def send_to_telegram(text: str, token: str, chat_id: str) -> None:
 st.set_page_config(page_title="HotViews", page_icon="fire", layout="centered")
 
 st.title("HotViews")
-st.caption("Generate TikTok captions and titles with Gemini AI")
+st.caption("Generate captions and titles for TikTok & Instagram Reels with Gemini AI")
 
 gemini_key = os.getenv("GEMINI_API_KEY", "")
 
@@ -164,7 +164,7 @@ with st.sidebar:
 
 # ── Video source ──────────────────────────────────────────────────────────────
 st.subheader("Video Source")
-tiktok_url = st.text_input("TikTok URL", placeholder="https://www.tiktok.com/@...")
+tiktok_url = st.text_input("TikTok or Instagram Reel URL", placeholder="https://www.tiktok.com/@...  or  https://www.instagram.com/reel/...")
 
 st.markdown("<div style='text-align:center;color:gray;margin:4px 0'>— or upload if URL doesn't work —</div>", unsafe_allow_html=True)
 
@@ -183,7 +183,7 @@ if st.button("Generate Caption & Title", type="primary", use_container_width=Tru
     if not gemini_key:
         errors.append("Gemini API key is missing — contact the app owner.")
     if not tiktok_url and not uploaded_file:
-        errors.append("Provide a TikTok URL or upload a video file.")
+        errors.append("Provide a TikTok or Instagram Reel URL, or upload a video file.")
     if not start_time or not end_time:
         errors.append("Enter both start and end times.")
     if not tg_token or not tg_chat_id:
